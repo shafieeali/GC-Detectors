@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1820" media="(prefers-color-scheme: dark)">
+<title>GC detectors explorer: FID, TCD and ECD</title>
+<style>:root{--ink:#1f2d3a;--navy:#163e63;--steel:#326b9e;--muted:#566676;--rule:#cfdbe6;--panel:#f1f5f9;--bg:#ffffff;--grid:#e6edf3;--eqr:#c62828;--good:#2f7d4f;--warn:#9a5f12;--alert:#b23a48;--sta:#d9822b;--film:rgba(217,130,43,.22);--support:#c9d1da;--partEdge:#a9b6c4;
+--c0:#1f6fb0;--c1:#9a7b00;--c2:#22806b;--c3:#7a4fc4;--c4:#b8601a;--c5:#8a5a44;--c6:#c2185b;--c7:#0f8fa8;--c8:#556b2f;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--ink:#e3eaf1;--navy:#a9cdf0;--steel:#7fb0dc;--muted:#9fb0c0;--rule:#34475a;--panel:#17232f;--bg:#0f1820;--grid:#1f2e3b;--eqr:#ff8a80;--good:#74cf98;--warn:#e7b066;--alert:#f0828f;--sta:#f0a85a;--film:rgba(240,168,90,.18);--support:#2a3947;--partEdge:#5b6e82;
+--c0:#7fb6ee;--c1:#e0c25a;--c2:#5cc4a8;--c3:#b99cf5;--c4:#eba45f;--c5:#d1a58f;--c6:#f48fb1;--c7:#5fd0e6;--c8:#b5cf7a;color-scheme:dark}}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Arial,Helvetica,sans-serif;overflow:hidden;-webkit-text-size-adjust:100%}
+button,select,input{font:inherit}:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0)}
+header{display:flex;flex-wrap:wrap;row-gap:0;align-items:center;gap:8px;padding:6px 10px 7px;border-bottom:1px solid var(--rule);flex:0 0 auto}
+header .hrow{display:flex;align-items:center;gap:8px;width:100%}
+header .brand{flex:0 0 100%;font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px}
+header h1{flex:1 1 auto;min-width:0;font-size:1.02rem;margin:0;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:480px){header h1 .long{display:none}}
+header select.bigsel{border:1.5px solid var(--steel);border-radius:8px;background:var(--bg);color:var(--navy);padding:7px 8px;max-width:calc(100vw - 180px);font-size:.95rem;font-weight:700}
+@media (min-width:700px){header select.bigsel{min-width:240px;font-size:1.05rem;padding:8px 14px}}
+.btn{border:1px solid var(--steel);border-radius:6px;background:transparent;color:var(--navy);padding:5px 10px;cursor:pointer;font-size:.88rem}
+.btn:hover{background:var(--panel)}.btn[aria-pressed=true]{background:var(--navy);color:var(--bg);border-color:var(--navy)}
+.main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.left{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.right{flex:0 0 auto;height:42%;min-height:190px;display:flex;flex-direction:column;border-top:1px solid var(--rule);background:var(--bg)}
+@media (max-height:700px){.right{height:40%}}
+@media (min-width:900px),(orientation:landscape) and (max-height:600px){.main{flex-direction:row}.right{height:auto;width:min(390px,40%);border-top:0;border-left:1px solid var(--rule)}}
+.right.collapsed{height:auto;min-height:0}.right.collapsed .pbody{display:none}.right.all #ptabs{display:none}
+.live{padding:6px 12px 4px;flex:0 0 auto}
+.live .l1{display:flex;align-items:baseline;gap:4px 12px;flex-wrap:wrap}
+.live .h{font-size:1.3rem;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums}
+.live .sub{font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.live .st{font-size:.82rem;font-weight:700;margin-left:auto}
+.live .l2{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:3px}
+.bar{display:flex;height:9px;border-radius:3px;overflow:hidden;background:var(--grid);margin:4px 0 2px}.bar span{display:block;height:100%}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:0}
+.seg{display:flex;gap:4px;padding:4px 10px;flex:0 0 auto;overflow-x:auto;scrollbar-width:none}.seg::-webkit-scrollbar{display:none}
+.seg button{flex:1 0 auto;border:1px solid var(--rule);background:var(--bg);color:var(--navy);border-radius:7px;padding:5px 9px;font-size:.86rem;cursor:pointer;white-space:nowrap}
+.seg button[aria-selected=true]{background:var(--navy);border-color:var(--navy);color:var(--bg)}
+.seg button .v{font-size:.72rem;opacity:.85;display:block;font-variant-numeric:tabular-nums}
+.seg .fold{flex:0 0 auto;min-width:40px;font-size:1rem}
+.stage{position:relative;flex:1 1 auto;min-height:170px;margin:0 10px 8px;border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:var(--bg)}
+.view{position:absolute;inset:0;display:none}.view.on{display:flex;flex-direction:column}
+.fill{flex:1 1 auto;min-height:0;position:relative}
+svg.full,canvas.full{width:100%;height:100%;display:block}
+.ax{stroke:var(--muted);stroke-width:1}.gl{stroke:var(--grid);stroke-width:1}.tk{fill:var(--muted);font-size:11px}.axt{fill:var(--ink);font-size:12px}
+.halo{paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
+.hint{position:absolute;left:52px;top:6px;font-size:.72rem;color:var(--muted);pointer-events:none;transition:opacity .3s}
+.ovl{position:absolute;font-size:.74rem;color:var(--muted);pointer-events:none}.ovl.tl{left:8px;top:6px;right:8px}
+.ovl.br{right:6px;bottom:6px;pointer-events:auto;display:flex;gap:4px}.ovl.br .btn{background:var(--bg);padding:3px 8px;font-size:.8rem}
+.mtop{display:flex;gap:6px;align-items:center;padding:5px 6px;flex:0 0 auto;overflow-x:auto;scrollbar-width:none}.mtop .sp{flex:1}
+.mtop .lab{font-size:.78rem;color:var(--muted);white-space:nowrap}
+.cap{position:absolute;left:6px;right:6px;bottom:6px;max-height:72%;overflow:auto;background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;font-size:.84rem;display:none}.cap.on{display:block}
+.scroll{overflow:auto;padding:8px 12px}
+.scroll table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:.84rem}
+.scroll th{font-weight:400;color:var(--muted);text-align:right;padding:4px;border-bottom:1px solid var(--rule)}
+.scroll td{padding:5px 4px;border-bottom:1px solid var(--rule);text-align:right}
+.scroll th:first-child,.scroll td:first-child{text-align:left}
+.scroll h3{font-size:.9rem;margin:10px 0 2px;color:var(--navy)}.scroll p{margin:6px 0;font-size:.86rem}
+.wrapx{overflow-x:auto}
+.pbody{flex:1 1 auto;min-height:0;overflow:auto;padding:2px 12px 10px}
+.row{margin:8px 0 4px}.row .top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.88rem}
+.row .val{border:1px dashed var(--steel);background:transparent;color:var(--ink);border-radius:5px;padding:1px 7px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;cursor:text;font-size:.88rem}
+.row input[type=range]{width:100%;accent-color:var(--steel);margin:4px 0 0;height:26px}
+.row input[type=text]{width:100%;padding:6px 8px;border:1px solid var(--steel);border-radius:6px;background:var(--bg);color:var(--ink);font-size:16px}
+.row select{width:100%;margin-top:4px;padding:6px 8px;border:1px solid var(--steel);border-radius:6px;background:var(--bg);color:var(--ink);font-size:16px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0}
+.eq{font-family:"Times New Roman",Times,serif;font-size:.95rem;color:var(--muted);margin:3px 0 0;line-height:1.35}
+.eq .r{color:var(--eqr);font-weight:700}.eq .n{font-family:Arial,Helvetica,sans-serif;font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.ptext{font-size:.8rem;color:var(--muted);margin:6px 0 4px}
+.info{font-size:.8rem;color:var(--muted);background:var(--panel);border-radius:6px;padding:6px 8px;margin:8px 0 2px}
+.warnbox{font-size:.8rem;color:var(--warn);font-weight:700;margin:4px 0}
+.chk{display:flex;gap:8px;align-items:center;font-size:.88rem;cursor:pointer;padding:5px 0}.chk input{width:19px;height:19px;accent-color:var(--steel)}
+.ghead{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 0;padding-top:8px;border-top:1px solid var(--rule)}
+.ghead:first-child{border-top:0;margin-top:4px}.ghead h2{font-size:.98rem;margin:0;color:var(--navy)}.ghead span{font-size:.82rem;font-weight:700;font-variant-numeric:tabular-nums}
+.forms{display:flex;gap:6px 14px;overflow-x:auto;padding:4px 8px 2px;flex:0 0 auto;scrollbar-width:none;border-bottom:1px solid var(--rule)}.forms::-webkit-scrollbar{display:none}
+.forms .fm{display:flex;flex-direction:column;align-items:center;flex:0 0 auto;font-size:.72rem;line-height:1.2;text-align:center}.forms .fm span{color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding:10px;overflow:auto}
+.card{border:1px solid var(--rule);border-radius:8px;padding:9px 12px}.card h3{margin:0 0 2px;font-size:.95rem}.card p{margin:4px 0;font-size:.85rem}.card .cost{color:var(--muted)}
+.gauge{height:9px;background:var(--grid);border-radius:5px;overflow:hidden;margin:5px 0}.gauge span{display:block;height:100%}
+dialog{border:1px solid var(--rule);border-radius:12px;padding:0;max-width:660px;width:calc(100% - 20px);max-height:calc(100dvh - 40px);background:var(--bg);color:var(--ink)}
+dialog::backdrop{background:rgba(10,20,30,.45)}
+.dhead{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--bg)}
+.dhead h2{margin:0;font-size:1.05rem;color:var(--navy)}.dbody{padding:4px 16px 16px;font-size:.92rem}.dbody h3{font-size:.98rem;color:var(--navy);margin:14px 0 4px}.dbody p{margin:6px 0}.dbody .note{color:var(--muted);font-size:.85rem}
+.fallback{margin:auto;padding:20px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">Interactive Chemistry · Ali Shafiee · University of Florida</div>
+    <div class="hrow"><h1>GC detectors<span class="long"> explorer</span></h1>
+    
+    <button type="button" class="btn" id="guideBtn">Guide</button></div>
+  </header>
+  <div class="main">
+    <section class="left" aria-label="Results">
+      <div class="live" aria-live="polite"><div id="live"></div></div>
+      <div class="seg" role="tablist" aria-label="View" id="vtabs"></div>
+      <div class="stage" id="stage"><div class="view" id="v-chrom" role="tabpanel" aria-label="Chromatogram"><div class="fill"><svg class="full" id="chsv" role="img" aria-label="Chromatogram from the selected detector"></svg></div></div><div class="view" id="v-inside" role="tabpanel" aria-label="Inside the detector"><div class="mtop"><span class="lab">The mixture arriving at the detector</span><span class="sp"></span><button type="button" class="btn playbtn" aria-pressed="false">Pause</button></div><div class="fill"><canvas class="full" id="dav" role="img" aria-label="Animation of compounds reaching the detector and the output it produces"></canvas></div></div><div class="view" id="v-flow" role="tabpanel" aria-label="Flow effect"><div class="fill"><svg class="full" id="flsv" role="img" aria-label="Peak height and area for FID and TCD at the chosen flow"></svg></div></div><div class="view" id="v-nums" role="tabpanel" aria-label="Numbers"><div class="scroll" id="nmd" style="flex:1"></div></div></div>
+    </section>
+    <section class="right" aria-label="Controls">
+      <div class="seg" role="tablist" aria-label="Control group" id="ptabs"><button type="button" class="fold" id="fold" aria-expanded="true" aria-label="Hide the controls to enlarge the view">▾</button></div>
+      <div class="pbody" id="pbody" role="tabpanel"></div>
+    </section>
+  </div>
+</div>
+<dialog id="guide" aria-labelledby="gTitle">
+  <div class="dhead"><h2 id="gTitle">Guide</h2><button type="button" class="btn" id="guideClose">Close</button></div>
+  <div class="dbody"><p class="note" style="margin-top:10px">Interactive Chemistry · Ali Shafiee · University of Florida</p><h3>What this tool shows</h3><p>A GC detector turns the compounds leaving the column into an electrical signal, and each type responds to something different. Choose a detector and watch which compounds show up, how big their peaks are, and how the carrier gas and flow change things.</p>
+<h3>FID: counts carbon</h3><p>Compounds burn in a small hydrogen–air flame. Carbon atoms make CHO⁺ ions, and the current collected is roughly proportional to the number of carbons per second (the effective carbon number; carbons bonded to O or Cl count less). Water, CO₂, N₂ and CCl₄ give little or nothing. The FID is a <b>mass-flow-sensitive</b> detector: it responds to grams per second, so peak height follows the flow while peak area doesn’t change.</p>
+<h3>TCD: universal, but less sensitive</h3><p>A heated filament loses heat to the gas around it. Helium and hydrogen conduct heat far better than organic vapors, so when an analyte arrives the filament gets hotter. The signal is proportional to the concentration times the difference in thermal conductivity, so with a nitrogen carrier the response is small, and compounds that conduct better than N₂ (like methane) even give negative peaks. The TCD is <b>concentration sensitive</b>: peak height stays the same when the flow changes, but peak area falls as flow rises.</p>
+<h3>ECD: selective for halogens</h3><p>A ⁶³Ni foil emits β electrons that create a steady current. Electronegative molecules, especially polyhalogenated ones like CCl₄, capture electrons and reduce the current. It is extremely sensitive to them and nearly blind to hydrocarbons, but it saturates at high amounts (a small linear range).</p>
+<h3>Sensitivity and detection limits</h3><p>A peak is detected when its height is about three times the noise (S/N ≥ 3). The limit of detection is LOD ≈ 3·noise/sensitivity. Use the amount slider to find each detector’s detection limit for hexane or CCl₄.</p>
+<p class="note">Thermal conductivities, effective carbon numbers and capture coefficients are approximate, chosen to show realistic trends; retention times are illustrative for a test mixture. FID sensitivity 0.015 C/g of carbon; noise levels are typical values.</p></div>
+</dialog>
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);};
+function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+function gauss(){var u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function sig(x,n){if(x===0)return '0';if(!isFinite(x))return '–';var a=Math.abs(x);if(a>=1e5)return Math.round(x).toLocaleString('en-US');var d=Math.max(0,n-1-Math.floor(Math.log10(a)));return x.toFixed(Math.min(d,6));}
+var SUPD={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+function sup(n){return String(n).split('').map(function(c){return SUPD[c]||c;}).join('');}
+function sci(x,d){if(x===0)return '0';var e=Math.floor(Math.log10(Math.abs(x))),m=x/Math.pow(10,e);var ms=m.toFixed(d==null?1:d);if(Math.abs(+ms)>=10){e++;ms=(m/10).toFixed(d==null?1:d);}return ms+' × 10'+sup(e);}
+function minus(s){return String(s).replace(/-/g,'−');}
+var NS='http://www.w3.org/2000/svg';
+function el(tag,a,txt){var e=document.createElementNS(NS,tag);for(var k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;return e;}
+function clearSvg(s){while(s.firstChild)s.removeChild(s.firstChild);}
+function niceStep(span,n){var raw=span/(n||5),p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p;return (m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p;}
+function gN(t,c,s){var z=(t-c)/s;return Math.exp(-0.5*z*z)/(s*2.5066283);}
+function R_(x){return '<span class="r">'+x+'</span>';}function N_(x){return '<span class="n">'+x+'</span>';}
+function svgSize(svg){var W=Math.max(200,svg.clientWidth),H=Math.max(120,svg.clientHeight);svg.setAttribute('viewBox','0 0 '+W+' '+H);clearSvg(svg);return [W,H];}
+var PAL={};function readPal(){var cs=getComputedStyle(document.documentElement);['ink','navy','steel','muted','rule','panel','bg','grid','eqr','good','warn','alert','sta','film','support','partEdge','c0','c1','c2','c3','c4','c5','c6','c7','c8'].concat(APP.pal||[]).forEach(function(k){PAL[k]=cs.getPropertyValue('--'+k).trim();});}
+function isDark(){return window.matchMedia('(prefers-color-scheme: dark)').matches;}
+/* ---------- controls ---------- */
+var EQ={},CTL={},running=!window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function addEq(box,id,fn){if(!fn)return;EQ[id]=fn;var d=document.createElement('div');d.className='eq';d.setAttribute('data-eq',id);box.appendChild(d);}
+function ctlSlider(box,o){
+  var row=document.createElement('div');row.className='row';row.innerHTML='<div class="top"><label for="s_'+o.id+'">'+o.label+'</label></div>';
+  var vb=document.createElement('button');vb.type='button';vb.className='val';vb.setAttribute('aria-label','Type a value for '+o.label.replace(/<[^>]+>/g,''));row.querySelector('.top').appendChild(vb);
+  addEq(row,o.id,o.eq);
+  var inp=document.createElement('input');inp.type='range';inp.id='s_'+o.id;
+  if(o.log){inp.min=Math.log10(o.min);inp.max=Math.log10(o.max);inp.step=0.005;}else{inp.min=o.min;inp.max=o.max;inp.step=o.step;}
+  row.appendChild(inp);
+  function show(){var v=o.get();vb.textContent=o.fmt(v);inp.value=o.log?Math.log10(v):v;inp.setAttribute('aria-valuetext',o.fmt(v));}
+  inp.addEventListener('input',function(){o.set(o.log?Math.pow(10,+inp.value):+inp.value);show();update(o.re);});
+  vb.addEventListener('click',function(){var ti=document.createElement('input');ti.type='text';ti.inputMode='decimal';ti.value=String(+o.get().toPrecision(4));
+    ti.setAttribute('aria-label',o.label.replace(/<[^>]+>/g,'')+' ('+o.min+' to '+o.max+')');ti.style.cssText='width:8em;padding:2px 6px;border:1px solid var(--steel);border-radius:5px;background:var(--bg);color:var(--ink);font-size:16px;text-align:right';
+    vb.replaceWith(ti);ti.focus();ti.select();var done=false;
+    function fin(a){if(done)return;done=true;if(a){var x=parseFloat(String(ti.value).replace('×10','e').replace(/\s/g,''));if(isFinite(x))o.set(clamp(x,o.min,o.max));}ti.replaceWith(vb);show();update(o.re);}
+    ti.addEventListener('blur',function(){fin(true);});ti.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();fin(true);}else if(e.key==='Escape')fin(false);});});
+  box.appendChild(row);show();CTL[o.id]={show:show};return row;
+}
+function ctlChips(box,o){
+  var row=document.createElement('div');row.className='row';row.innerHTML='<div class="top"><span>'+o.label+'</span></div>';
+  var ch=document.createElement('div');ch.className='chips';ch.setAttribute('role','group');ch.setAttribute('aria-label',o.label.replace(/<[^>]+>/g,''));
+  o.options.forEach(function(op){var b=document.createElement('button');b.type='button';b.className='btn';b.innerHTML=op[1];b.setAttribute('aria-pressed',o.get()===op[0]?'true':'false');
+    b.addEventListener('click',function(){o.set(op[0]);ch.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});if(o.rebuild)buildPanel();update(o.re);});ch.appendChild(b);});
+  row.appendChild(ch);addEq(row,o.id,o.eq);box.appendChild(row);return row;
+}
+function ctlSelect(box,o){
+  var row=document.createElement('div');row.className='row';row.innerHTML='<div class="top"><label for="q_'+o.id+'">'+o.label+'</label></div>';
+  var sel=document.createElement('select');sel.id='q_'+o.id;o.options.forEach(function(op){var x=document.createElement('option');x.value=op[0];x.textContent=op[1];sel.appendChild(x);});sel.value=o.get();
+  sel.addEventListener('change',function(){o.set(sel.value);if(o.rebuild)buildPanel();update(o.re);});row.appendChild(sel);addEq(row,o.id,o.eq);box.appendChild(row);return row;
+}
+function ctlCheck(box,o){var l=document.createElement('label');l.className='chk';l.innerHTML='<input type="checkbox"'+(o.get()?' checked':'')+'> '+o.label;l.querySelector('input').addEventListener('change',function(){o.set(this.checked);if(o.rebuild)buildPanel();update(o.re);});box.appendChild(l);return l;}
+function ctlText(box,o){var row=document.createElement('div');row.className='row';row.innerHTML='<div class="top"><label for="t_'+o.id+'">'+o.label+'</label><span class="warnbox" id="tw_'+o.id+'"></span></div>';
+  var t=document.createElement('input');t.type='text';t.id='t_'+o.id;t.value=o.get();t.autocapitalize='off';t.spellcheck=false;t.setAttribute('autocomplete','off');
+  t.addEventListener('input',function(){var err=o.set(t.value);$('tw_'+o.id).textContent=err||'';if(!err)update(o.re);});row.appendChild(t);addEq(row,o.id,o.eq);box.appendChild(row);CTL[o.id]={input:t};return row;}
+function ctlNote(box,html,cls){var p=document.createElement('p');p.className=cls||'ptext';p.innerHTML=html;box.appendChild(p);return p;}
+function refreshEq(){document.querySelectorAll('.eq[data-eq]').forEach(function(e){var f=EQ[e.getAttribute('data-eq')];if(f)e.innerHTML=f();});}
+/* ---------- panel ---------- */
+var pgroup=null,MQall=window.matchMedia('(min-width:900px) and (min-height:640px)');
+function buildPanel(){
+  var box=$('pbody'),all=MQall.matches,groups=APP.groups();box.innerHTML='';EQ={};CTL={};
+  if(!groups.some(function(g){return g.id===pgroup;}))pgroup=groups[0].id;
+  var tabs=$('ptabs');tabs.querySelectorAll('[role=tab]').forEach(function(b){b.remove();});
+  groups.forEach(function(g){var b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.setAttribute('data-p',g.id);b.setAttribute('aria-selected',g.id===pgroup?'true':'false');b.innerHTML=g.tab+'<span class="v" id="pv-'+g.id+'"></span>';
+    b.addEventListener('click',function(){pgroup=g.id;setFold(false);buildPanel();box.scrollTop=0;});tabs.insertBefore(b,$('fold'));});
+  document.querySelector('.right').classList.toggle('all',all);
+  if(all)groups.forEach(function(g){var hd=document.createElement('div');hd.className='ghead';hd.innerHTML='<h2>'+g.title+'</h2><span id="gh-'+g.id+'"></span>';box.appendChild(hd);g.render(box);});
+  else groups.filter(function(g){return g.id===pgroup;})[0].render(box);
+  var rb=document.createElement('button');rb.type='button';rb.className='btn';rb.style.marginTop='12px';rb.textContent='Reset all to defaults';
+  rb.addEventListener('click',function(){APP.reset();buildPanel();update(true);});box.appendChild(rb);
+  if(APP.S)refreshEq();if(APP.tabVals)APP.tabVals();
+}
+function tabVal(id,txt){var a=$('pv-'+id);if(a)a.textContent=txt;var b=$('gh-'+id);if(b)b.textContent=txt;}
+function setFold(c){var r=document.querySelector('.right');r.classList.toggle('collapsed',c);var f=$('fold');f.textContent=c?'▴':'▾';f.setAttribute('aria-expanded',c?'false':'true');f.setAttribute('aria-label',c?'Show the controls':'Hide the controls to enlarge the view');}
+/* ---------- views ---------- */
+var view=null;
+function V(){return APP.views.filter(function(v){return v.id===view;})[0];}
+function setView(id){view=id;document.querySelectorAll('#vtabs [role=tab]').forEach(function(b){b.setAttribute('aria-selected',b.getAttribute('data-view')===id?'true':'false');});
+  APP.views.forEach(function(v){$('v-'+v.id).classList.toggle('on',v.id===id);});var v=V();if(v.enter)v.enter();if(v.draw)v.draw();}
+function update(re){APP.compute();APP.live();refreshEq();if(APP.tabVals)APP.tabVals();var v=V();if(v){if(re&&v.reset)v.reset();if(v.draw)v.draw();}}
+var last=0;function loop(ts){if(!running)return;var dt=last?Math.min(0.05,(ts-last)/1000):0;last=ts;var v=V();if(!document.hidden&&v&&v.step){v.step(dt);if(v.draw)v.draw(true);}requestAnimationFrame(loop);}
+function setPlay(on){running=on;document.querySelectorAll('.playbtn').forEach(function(b){b.textContent=on?'Pause':'Play';b.setAttribute('aria-pressed',on?'false':'true');});if(on){last=0;requestAnimationFrame(loop);}}
+function boot(){
+  readPal();
+  var vt=$('vtabs');APP.views.forEach(function(v){var b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.setAttribute('data-view',v.id);b.textContent=v.label;b.addEventListener('click',function(){setView(v.id);});vt.appendChild(b);});
+  $('fold').addEventListener('click',function(){setFold(!document.querySelector('.right').classList.contains('collapsed'));});
+  document.querySelectorAll('.playbtn').forEach(function(b){b.addEventListener('click',function(){setPlay(!running);});});
+  var g=$('guide');$('guideBtn').addEventListener('click',function(){if(g.showModal)g.showModal();else g.setAttribute('open','');});
+  $('guideClose').addEventListener('click',function(){if(g.close)g.close();else g.removeAttribute('open');});g.addEventListener('click',function(e){if(e.target===g&&g.close)g.close();});
+  document.querySelectorAll('[data-cap]').forEach(function(b){b.addEventListener('click',function(){var c=$(b.getAttribute('data-cap')),on=!c.classList.contains('on');c.classList.toggle('on',on);b.setAttribute('aria-expanded',on?'true':'false');b.textContent=on?'Hide':'Explain';});});
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){readPal();if(APP.theme)APP.theme();var v=V();if(v&&v.draw)v.draw();});
+  MQall.addEventListener('change',buildPanel);
+  new ResizeObserver(function(){var v=V();if(v){if(v.resize)v.resize();if(v.draw)v.draw();}}).observe($('stage'));
+  if(APP.init)APP.init();
+  APP.compute();buildPanel();APP.live();
+  var h=(location.hash||'').slice(1);setView(APP.views[0].id);if(h&&APP.hash)APP.hash(h);
+  if(running)requestAnimationFrame(loop);else setPlay(false);
+}
+
+var APP={pal:[]};
+/* line-angle structure engine: def = {a:[{x,y,l,li,ionOnly}], b:[[i,j,order,cx?,cy?,ionOnly?]]} ; y up, bond length 1 */
+var HEXV=[[0,1],[0.866,0.5],[0.866,-0.5],[0,-1],[-0.866,-0.5],[-0.866,0.5]];
+function ringA(lbl,dx,dy){dx=dx||0;dy=dy||0;return HEXV.map(function(p,i){return {x:p[0]+dx,y:p[1]+dy,l:(lbl&&lbl[i])||''};});}
+function ringB(o,cx,cy,arom){o=o||0;cx=cx||0;cy=cy||0;var b=[];for(var i=0;i<6;i++){var dbl=arom!==false&&i%2===0;b.push(dbl?[o+i,o+(i+1)%6,2,cx,cy]:[o+i,o+(i+1)%6,1]);}return b;}
+function molSVG(d,ion,s,col){
+  var A=d.a.filter(function(x){return ion||!x.ionOnly;}),pad=0.75,fs=Math.max(9,0.66*s);
+  var xs=A.map(function(a){return a.x;}),ys=A.map(function(a){return a.y;});
+  var x0=Math.min.apply(null,xs)-pad,x1=Math.max.apply(null,xs)+pad,y0=Math.min.apply(null,ys)-pad,y1=Math.max.apply(null,ys)+pad;
+  function P(a){return [(a.x-x0)*s,(y1-a.y)*s];}
+  var out='';
+  d.b.forEach(function(b){
+    if(b[5]&&!ion)return;
+    var A1=d.a[b[0]],A2=d.a[b[1]],p1=P(A1),p2=P(A2),dx=p2[0]-p1[0],dy=p2[1]-p1[1],L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,nx=-uy,ny=ux;
+    var l1=(ion&&A1.li)?A1.li:A1.l,l2=(ion&&A2.li)?A2.li:A2.l,c1=l1?0.42*s:0,c2=l2?0.42*s:0;
+    var q1=[p1[0]+ux*c1,p1[1]+uy*c1],q2=[p2[0]-ux*c2,p2[1]-uy*c2];
+    function ln(a,e){out+='<line x1="'+a[0].toFixed(1)+'" y1="'+a[1].toFixed(1)+'" x2="'+e[0].toFixed(1)+'" y2="'+e[1].toFixed(1)+'"/>';}
+    var ringD=b[2]===2&&b[3]!=null;
+    if(b[2]===2&&!ringD){var o=0.11*s;ln([q1[0]+nx*o,q1[1]+ny*o],[q2[0]+nx*o,q2[1]+ny*o]);ln([q1[0]-nx*o,q1[1]-ny*o],[q2[0]-nx*o,q2[1]-ny*o]);return;}
+    ln(q1,q2);
+    if(ringD){var cx0=(b[3]-x0)*s,cy0=(y1-b[4])*s,mx=(p1[0]+p2[0])/2,my=(p1[1]+p2[1])/2;if((cx0-mx)*nx+(cy0-my)*ny<0){nx=-nx;ny=-ny;}var o2=0.19*s,sh=0.17*L;
+      ln([q1[0]+nx*o2+ux*sh,q1[1]+ny*o2+uy*sh],[q2[0]+nx*o2-ux*sh,q2[1]+ny*o2-uy*sh]);}
+  });
+  var g='<g stroke="'+col+'" stroke-width="'+Math.max(1.2,s/9).toFixed(2)+'" stroke-linecap="round" fill="none">'+out+'</g>';
+  A.forEach(function(a){var lb=(ion&&a.li)?a.li:a.l;if(!lb)return;var p=P(a),ch=ion&&(a.li||a.ionOnly)&&/[⁺⁻+]/.test(lb);
+    g+='<text x="'+p[0].toFixed(1)+'" y="'+p[1].toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="'+fs.toFixed(1)+'" font-weight="'+(ch?'700':'400')+'" fill="'+(ch?'var(--eqr)':col)+'" style="paint-order:stroke;stroke:var(--bg);stroke-width:3px;stroke-linejoin:round">'+lb+'</text>';});
+  return {w:(x1-x0)*s,h:(y1-y0)*s,svg:g};
+}
+function molInline(d,ion,s,col){var m=molSVG(d,ion,s,col);return '<svg width="'+m.w.toFixed(0)+'" height="'+m.h.toFixed(0)+'" viewBox="0 0 '+m.w.toFixed(1)+' '+m.h.toFixed(1)+'" aria-hidden="true">'+m.svg+'</svg>';}
+function chain(n,dx,dy){var a=[];for(var i=0;i<n;i++)a.push({x:(dx||0)+i*0.866,y:(dy||0)+(i%2)*0.5});var b=[];for(i=1;i<n;i++)b.push([i-1,i,1]);return {a:a,b:b};}
+/* analytes: M (g/mol), carbon mass fraction, ECN (effective carbon number), thermal conductivity (mW/m·K, vapor ~100 °C), ECD capture (relative), tR at F0 (min) */
+var AN=[
+ {id:'N2',f:'N₂ (air)',M:28.0,wc:0,ecn:0,lam:31,ecd:0,t:1.0},{id:'CH4',f:'CH₄ methane',M:16.0,wc:0.749,ecn:1,lam:45,ecd:0,t:1.3},
+ {id:'CO2',f:'CO₂',M:44.0,wc:0.273,ecn:0,lam:22,ecd:0,t:1.8},{id:'H2O',f:'H₂O',M:18.0,wc:0,ecn:0,lam:24,ecd:0,t:2.6},
+ {id:'hex',f:'C₆H₁₄ hexane',M:86.2,wc:0.836,ecn:6,lam:18,ecd:0,t:4.0},{id:'bz',f:'C₆H₆ benzene',M:78.1,wc:0.923,ecn:6,lam:16,ecd:1e-6,t:5.2},
+ {id:'chcl3',f:'CHCl₃ chloroform',M:119.4,wc:0.101,ecn:0.8,lam:10,ecd:0.03,t:6.2},{id:'ccl4',f:'CCl₄',M:153.8,wc:0.078,ecn:0.1,lam:9,ecd:1,t:7.1}];
+var CARR={He:{n:'He',lam:179},H2:{n:'H₂',lam:212},N2:{n:'N₂',lam:31},Ar:{n:'Ar',lam:21}};
+var DET={FID:{n:'Flame ionization (FID)',unit:'pA',noise:0.01,type:'mass'},TCD:{n:'Thermal conductivity (TCD)',unit:'mV',noise:0.01,type:'conc'},ECD:{n:'Electron capture (ECD)',unit:'Hz',noise:5,type:'conc',sat:2e5}};
+var F0=30;
+function D0(){return {det:'FID',car:'He',f:1,ng:10,on:{N2:true,CH4:true,CO2:true,H2O:true,hex:true,bz:true,chcl3:true,ccl4:true}};}
+var S=D0(),P=[];
+function sig0(a){return (0.012*a.t+0.012)*60;}/* seconds at F0 */
+function resp(a,det,f,ng,car){var sg=sig0(a)/f,Fs=F0*f/60,cpk=ng*1e-6/(sg*Fs*2.5066);/* mg/mL at peak */
+  if(det==='FID'){var mc=ng*a.wc*(a.ecn/Math.max(1,a.wc>0?a.ecn/(a.ecn||1):1));var mC=ng*1e-3*(a.ecn*12.011/a.M);/* µg of carbon equivalents */return mC/(sg*2.5066)*15000;}
+  if(det==='TCD'){var cl=CARR[car].lam;return 1e4*cpk*(cl-a.lam)/(179-18)*(1);}
+  var raw=2.5e5*1e3*cpk*a.ecd,s2=DET.ECD.sat;return s2*(1-Math.exp(-raw/s2));}
+function compute(){P=AN.filter(function(a){return S.on[a.id];}).map(function(a){var h=resp(a,S.det,S.f,S.ng,S.car),sg=sig0(a)/S.f/60;return {a:a,tR:a.t/S.f,s:sg,h:h,sn:Math.abs(h)/DET[S.det].noise};});}
+function units(v){var d=DET[S.det];return sig(v,3)+' '+d.unit;}
+APP.live=function(){var d=DET[S.det],seen=P.filter(function(p){return p.sn>=3;}),best=P.slice().sort(function(a,b){return b.sn-a.sn;})[0];
+  $('live').innerHTML='<div class="l1"><span class="h">'+S.det+': '+seen.length+' of '+P.length+' detected</span><span class="sub">'+(best?'strongest: '+best.a.f.split(' ')[0]+', S/N '+sig(best.sn,2):'')+'</span><span class="st" style="color:var(--c3)">'+(d.type==='mass'?'Mass-flow sensitive':'Concentration sensitive')+'</span></div>'
+   +'<div class="l2"><span>carrier '+CARR[S.car].n+', '+Math.round(F0*S.f)+' mL/min</span><span>'+sig(S.ng,2)+' ng each</span><span>noise '+units(d.noise)+'</span>'+(S.det==='TCD'&&P.some(function(p){return p.h<0;})?'<span style="color:var(--eqr)">negative peaks: analyte conducts heat better than the carrier</span>':'')+'</div>';};
+APP.tabVals=function(){tabVal('det',S.det);tabVal('car',CARR[S.car].n+' · '+S.f.toFixed(2)+'F');tabVal('smp',sig(S.ng,2)+' ng');};
+var SM={};function sdef(id){if(SM[id])return SM[id];var d;
+  if(id==='hex')d=chain(6);else if(id==='bz')d={a:ringA(),b:ringB()};
+  else if(id==='chcl3')d={a:[{x:0,y:0},{x:0,y:1,l:'H'},{x:-0.94,y:-0.5,l:'Cl'},{x:0.94,y:-0.5,l:'Cl'},{x:0,y:-1.05,l:'Cl'}],b:[[0,1,1],[0,2,1],[0,3,1],[0,4,1]]};
+  else if(id==='ccl4')d={a:[{x:0,y:0},{x:0,y:1.05,l:'Cl'},{x:-0.94,y:-0.5,l:'Cl'},{x:0.94,y:-0.5,l:'Cl'},{x:0,y:-1.05,l:'Cl'}],b:[[0,1,1],[0,2,1],[0,3,1],[0,4,1]]};
+  else if(id==='CO2')d={a:[{x:-1,y:0,l:'O'},{x:0,y:0,l:'C'},{x:1,y:0,l:'O'}],b:[[0,1,2],[1,2,2]]};
+  else if(id==='H2O')d={a:[{x:0,y:0.3,l:'O'},{x:-0.8,y:-0.3,l:'H'},{x:0.8,y:-0.3,l:'H'}],b:[[0,1,1],[0,2,1]]};
+  else if(id==='CH4')d={a:[{x:0,y:0,l:'C'},{x:0,y:1,l:'H'},{x:0,y:-1,l:'H'},{x:-1,y:0,l:'H'},{x:1,y:0,l:'H'}],b:[[0,1,1],[0,2,1],[0,3,1],[0,4,1]]};
+  else d={a:[{x:0,y:0,l:'N≡N'}],b:[]};return SM[id]=d;}
+APP.groups=function(){var d=DET[S.det];return [
+ {id:'det',tab:'Detector',title:'Detector',render:function(b){
+   ctlChips(b,{id:'det',label:'Detector',options:[['FID','FID'],['TCD','TCD'],['ECD','ECD']],get:function(){return S.det;},set:function(v){S.det=v;},rebuild:true,
+     eq:function(){return S.det==='FID'?'signal ∝ (dm/dt)·'+R_('ECN')+'/M &nbsp;(carbon atoms burned per second)':(S.det==='TCD'?'signal ∝ c·('+R_('λ<sub>carrier</sub>')+' − λ<sub>analyte</sub>) &nbsp;(heat conducted away from a hot filament)':'signal ∝ c·'+R_('K<sub>capture</sub>')+' &nbsp;(electrons captured from a ⁶³Ni β source)');}});
+   ctlNote(b,{FID:'Organic compounds burn in a hydrogen–air flame and make ions (CHO⁺) roughly in proportion to their carbon atoms. Carbons bonded to O or halogens count less (lower effective carbon number), and N₂, H₂O and CO₂ give almost nothing. Very sensitive (picograms of carbon) with a huge linear range (about 10⁷).',
+     TCD:'A heated filament loses heat to the gas flowing past it. When a compound that conducts heat worse than the carrier arrives, the filament warms up and its resistance changes. It sees everything (universal) but is far less sensitive; its response depends on the difference in thermal conductivity, so light carriers (He, H₂) work best.',
+     ECD:'A ⁶³Ni foil emits β electrons that make a steady current. Molecules with electronegative atoms (especially halogens) capture electrons and lower that current. Extremely sensitive and selective for halogenated compounds, such as pesticides, but with a small linear range (about 10⁴) before it saturates.'}[S.det],'info');}},
+ {id:'car',tab:'Carrier',title:'Carrier gas and flow',render:function(b){
+   ctlChips(b,{id:'car',label:'Carrier gas',options:Object.keys(CARR).map(function(k){return [k,CARR[k].n+' (λ '+CARR[k].lam+')'];}),get:function(){return S.car;},set:function(v){S.car=v;},
+     eq:function(){var hx=AN[4];return 'TCD signal ∝ ('+R_('λ<sub>carrier</sub>')+' − λ<sub>analyte</sub>)'+N_('  hexane: '+CARR[S.car].lam+' − '+hx.lam+' = '+(CARR[S.car].lam-hx.lam)+' mW/m·K');}});
+   ctlSlider(b,{id:'f',label:'Carrier flow (relative to 30 mL/min)',min:0.25,max:4,log:true,get:function(){return S.f;},set:function(v){S.f=v;},fmt:function(v){return v.toFixed(2)+'F ('+Math.round(F0*v)+' mL/min)';},
+     eq:function(){return 't<sub>R</sub> ∝ 1/'+R_('F')+', width ∝ 1/'+R_('F')+'<br>'+N_('mass-flow detector (FID): height ∝ F, area constant · concentration detector (TCD, ECD): height constant, area ∝ 1/F');}});
+   ctlNote(b,'Only the TCD cares which carrier gas you use (thermal conductivities in mW/m·K). Flow changes every detector, in different ways; see the Flow effect view.');}},
+ {id:'smp',tab:'Sample',title:'Sample',render:function(b){
+   ctlSlider(b,{id:'ng',label:'Amount of each compound injected',min:0.001,max:1000,log:true,get:function(){return S.ng;},set:function(v){S.ng=v;},fmt:function(v){return sig(v,2)+' ng';},
+     eq:function(){var h=P.filter(function(p){return p.a.id==='hex';})[0];return 'S/N = peak height / noise; LOD ≈ 3·noise/sensitivity<br>'+N_(h?'hexane: '+units(h.h)+' / '+units(DET[S.det].noise)+' → S/N = '+sig(h.sn,2):'');}});
+   AN.forEach(function(a){var l=document.createElement('label');l.className='chk';l.innerHTML='<input type="checkbox"'+(S.on[a.id]?' checked':'')+'><span style="display:inline-flex;align-items:center;gap:8px">'+molInline(sdef(a.id),false,9,'var(--ink)')+a.f+'</span>';
+     l.querySelector('input').addEventListener('change',function(){S.on[a.id]=this.checked;update(true);});b.appendChild(l);});
+   ctlNote(b,'Retention times are illustrative for a test mixture.');}}];};
+APP.S=true;APP.reset=function(){S=D0();compute();};APP.compute=compute;
+function drawChrom(){if(!$('v-chrom').classList.contains('on'))return;var svg=$('chsv'),wh=svgSize(svg),W=wh[0],H=wh[1],PL=12,PR=12,PT=34,PB=34,tmax=Math.max(8.5/S.f,2);
+  function X(t){return PL+t/tmax*(W-PL-PR);}var mx=Math.max.apply(null,P.map(function(p){return Math.abs(p.h);}).concat([DET[S.det].noise*20])),neg=P.some(function(p){return p.h<0;});
+  var y0=neg?PT+(H-PT-PB)*0.62:H-PB;function Y(v){return y0-v/mx*(neg?(y0-PT)*0.95:(H-PT-PB)*0.92);}
+  var st=niceStep(tmax,W<420?4:7);for(var t=0;t<=tmax;t+=st){svg.appendChild(el('line',{x1:X(t),y1:PT,x2:X(t),y2:H-PB,'class':'gl'}));svg.appendChild(el('text',{x:X(t),y:H-PB+15,'text-anchor':'middle','class':'tk'},sig(t,2)));}
+  svg.appendChild(el('line',{x1:PL,y1:y0,x2:W-PR,y2:y0,'class':'ax'}));svg.appendChild(el('text',{x:(PL+W-PR)/2,y:H-3,'text-anchor':'middle','class':'axt'},'Time (min)'));
+  var n=Math.round(W*2),d='',nz=DET[S.det].noise;for(var i=0;i<=n;i++){var tt=tmax*i/n,v=0;P.forEach(function(p){var z=(tt-p.tR)/p.s;if(z>-8&&z<8)v+=p.h*Math.exp(-0.5*z*z);});v+=gauss()*nz;d+=(d?'L':'M')+X(tt).toFixed(1)+' '+Y(v).toFixed(1);}
+  svg.appendChild(el('path',{d:d,fill:'none',stroke:'var(--navy)','stroke-width':1.6}));
+  var lastx=-99,miss=[];P.forEach(function(p,i){var x=X(p.tR),det=p.sn>=3,lab=p.a.f.split(' ')[0];if(!det){miss.push(lab);return;}if(x-lastx<30)return;lastx=x;
+    svg.appendChild(el('text',{x:x,y:p.h<0?Y(p.h)+14:Y(p.h)-6,'text-anchor':'middle','font-size':10.5,'font-weight':'bold',fill:'var(--c'+(AN.indexOf(p.a)%8)+')','class':'halo'},lab));});
+  if(miss.length)svg.appendChild(el('text',{x:PL+2,y:PT-4,'font-size':11,fill:'var(--muted)','class':'halo'},'Not detected (S/N < 3): '+miss.join(', ')));
+  if(miss.length===P.length&&P.length)svg.appendChild(el('text',{x:W/2,y:PT+40,'text-anchor':'middle','font-size':12.5,'font-weight':'bold',fill:'var(--warn)','class':'halo'},S.det==='TCD'?'Nothing above the noise: a TCD needs far more sample. Try 1,000 ng.':'Nothing above the noise: try a larger amount.'));
+  svg.appendChild(el('text',{x:W-PR,y:16,'text-anchor':'end','font-size':11,fill:'var(--muted)'},S.det+' signal ('+DET[S.det].unit+'), full scale '+units(mx)));}
+function drawFlow(){if(!$('v-flow').classList.contains('on'))return;var svg=$('flsv'),wh=svgSize(svg),W=wh[0],H=wh[1],side=W>=520,pw=side?(W-30)/2:W-20,ph=side?H-60:(H-80)/2,a=AN[4],T0=a.t,S0=T0*0.06;
+  [['FID (mass-flow sensitive)',function(f){return f;},'var(--c0)'],['TCD (concentration sensitive)',function(f){return 1;},'var(--c3)']].forEach(function(q,k){var ox=side?10+k*(pw+10):10,oy=side?30:30+k*(ph+40);
+    function X(t){return ox+t/(T0*2.4)*pw;}function Y(v){return oy+ph-v/4.4*ph;}
+    svg.appendChild(el('text',{x:ox,y:oy-10,'font-size':12,'font-weight':'bold',fill:q[2]},q[0]));svg.appendChild(el('line',{x1:ox,y1:oy+ph,x2:ox+pw,y2:oy+ph,'class':'ax'}));
+    function pk(f,h){var dd='';for(var i=0;i<=300;i++){var t=T0*2.4*i/300,y=h*Math.exp(-0.5*Math.pow((t-T0/f)/(S0/f),2));dd+=(dd?'L':'M')+X(t).toFixed(1)+' '+Y(y).toFixed(1);}return dd;}
+    svg.appendChild(el('path',{d:pk(1,1),fill:'none',stroke:'var(--muted)','stroke-dasharray':'5 4','stroke-width':1.4}));var h=q[1](S.f);svg.appendChild(el('path',{d:pk(S.f,h)+'Z',fill:q[2],'fill-opacity':0.15,stroke:q[2],'stroke-width':2.2}));
+    svg.appendChild(el('text',{x:ox+pw,y:oy+4,'text-anchor':'end','font-size':11.5,'font-weight':'bold',fill:q[2]},'height '+h.toFixed(2)+'×, area '+(k?1/S.f:1).toFixed(2)+'×'));});
+  svg.appendChild(el('text',{x:10,y:H-8,'font-size':11,fill:'var(--muted)'},'Hexane at '+S.f.toFixed(2)+'F (shaded) vs at F (dashed). Same amount injected.'));}
+/* inside the detector: animation of the stream arriving at the detector */
+var DA=null,dcx=null,DW=600,DH=300;
+function daSize(){var cv=$('dav');dcx=cv.getContext('2d');var r=cv.getBoundingClientRect();if(!r.width)return false;var d=Math.min(2,window.devicePixelRatio||1);DW=r.width;DH=r.height;cv.width=DW*d;cv.height=DH*d;dcx.setTransform(d,0,0,d,0,0);return true;}
+function daInit(){if(!daSize())return;DA={t:0,m:[],e:[],trace:[],sig:0,heat:0};}
+function daStep(dt){if(!DA)return;var tmax=8.5,sp=tmax/12;DA.t+=dt*sp;if(DA.t>tmax){DA.t=0;DA.trace=[];}
+  P.forEach(function(p){var c=Math.exp(-0.5*Math.pow((DA.t-p.a.t)/(sig0(p.a)/60*2.2),2));if(Math.random()<c*dt*40)DA.m.push({a:p.a,x:30,y:DH*0.5+gauss()*12,vx:90+Math.random()*30,p:p,done:false});});
+  var sig2=0;DA.m.forEach(function(m){m.x+=m.vx*dt;m.y+=gauss()*1.5;});
+  var zone=[DW*0.42,DW*0.58];
+  DA.m.forEach(function(m){if(!m.done&&m.x>zone[0]){m.done=true;if(S.det==='FID'&&m.a.ecn>0.3){m.ion=true;}if(S.det==='ECD'&&m.a.ecd>0.01)m.cap=true;}});
+  P.forEach(function(p){var c=Math.exp(-0.5*Math.pow((DA.t-p.a.t)/(sig0(p.a)/60*2.2),2));sig2+=p.h*c;});DA.sig=sig2;DA.trace.push([DA.t,sig2]);
+  DA.m=DA.m.filter(function(m){return m.x<DW+10;});if(S.det==='ECD'){if(Math.random()<dt*30)DA.e.push({x:DW*0.5+gauss()*20,y:DH*0.32,vy:60});DA.e.forEach(function(e){e.y+=e.vy*dt;});DA.e=DA.e.filter(function(e){return e.y<DH*0.68;});}}
+function daDraw(){if(!DA||!dcx)return;var W=DW,H=DH,c=dcx,cy=H*0.5,zx0=W*0.42,zx1=W*0.58;c.clearRect(0,0,W,H);
+  c.fillStyle=PAL.panel;c.fillRect(20,cy-34,W-40,68);c.fillStyle=PAL.muted;c.font='11px Arial';c.fillText('from the column →',24,cy-40);
+  if(S.det==='FID'){var g=c.createRadialGradient((zx0+zx1)/2,cy,4,(zx0+zx1)/2,cy,50);g.addColorStop(0,'rgba(255,170,40,.85)');g.addColorStop(1,'rgba(255,120,0,0)');c.fillStyle=g;c.beginPath();c.arc((zx0+zx1)/2,cy,50,0,7);c.fill();c.fillStyle=PAL.ink;c.fillText('H₂/air flame; collector electrode above',zx0-30,cy-48);c.fillStyle=PAL.muted;c.fillRect(zx0,cy-60,zx1-zx0,4);}
+  if(S.det==='TCD'){var heat=clamp(0.3+DA.sig/Math.max(1e-9,Math.max.apply(null,P.map(function(p){return Math.abs(p.h);}))),0,1.3);c.strokeStyle='rgba(220,'+Math.round(140-heat*80)+',40,1)';c.lineWidth=3;c.beginPath();for(var i=0;i<=10;i++)c.lineTo(zx0+i*(zx1-zx0)/10,cy+(i%2?8:-8));c.stroke();c.fillStyle=PAL.ink;c.fillText('heated filament (glows hotter when heat is carried away less)',zx0-60,cy-42);}
+  if(S.det==='ECD'){c.fillStyle=PAL.c5;c.fillRect(zx0,cy-34,zx1-zx0,5);c.fillStyle=PAL.ink;c.fillText('⁶³Ni β source → electrons → anode (steady current)',zx0-60,cy-42);c.fillStyle=PAL.c7;DA.e.forEach(function(e){c.fillRect(e.x-1,e.y-1,2.5,2.5);});}
+  DA.m.forEach(function(m){var i=AN.indexOf(m.a),col=PAL['c'+(i%8)];c.beginPath();c.arc(m.x,m.y,m.a.M>60?5:3.6,0,7);
+    if(S.det==='FID'&&m.done){if(m.ion){c.fillStyle=PAL.eqr;c.font='bold 9px Arial';c.fillText('+',m.x-2,m.y-6);}c.fillStyle=m.ion?col:PAL.support;c.fill();}
+    else if(S.det==='ECD'&&m.cap&&m.done){c.fillStyle=col;c.fill();c.fillStyle=PAL.eqr;c.font='bold 10px Arial';c.fillText('−',m.x-3,m.y-6);}else{c.fillStyle=col;c.fill();}});
+  var y0=H-18,hgt=H*0.22,tmax=8.5,mx=Math.max.apply(null,P.map(function(p){return Math.abs(p.h);}).concat([1e-9])),neg=P.some(function(p){return p.h<0;});c.strokeStyle=PAL.rule;c.beginPath();c.moveTo(20,neg?y0-hgt/2:y0);c.lineTo(W-20,neg?y0-hgt/2:y0);c.stroke();
+  c.strokeStyle=PAL.navy;c.lineWidth=1.8;c.beginPath();DA.trace.forEach(function(q,i){var x=20+q[0]/tmax*(W-40),y=(neg?y0-hgt/2:y0)-q[1]/mx*(neg?hgt/2:hgt);if(i)c.lineTo(x,y);else c.moveTo(x,y);});c.stroke();
+  c.fillStyle=PAL.muted;c.font='11px Arial';c.fillText('detector output',22,y0-hgt-4);
+  var cur=P.filter(function(p){return Math.abs(DA.t-p.a.t)<0.25;})[0];c.fillStyle=PAL.ink;c.font='bold 12px Arial';c.fillText('t = '+DA.t.toFixed(1)+' min'+(cur?'  ·  '+cur.a.f+(cur.sn>=3?'':' (no response)'):''),24,18);}
+APP.views=[{id:'chrom',label:'Chromatogram',draw:drawChrom},{id:'inside',label:'Inside the detector',enter:daInit,resize:daInit,step:daStep,draw:daDraw},{id:'flow',label:'Flow effect',draw:drawFlow},
+ {id:'nums',label:'Numbers',draw:function(){if(!$('v-nums').classList.contains('on'))return;var h='<div class="wrapx"><table><tr><th>Compound</th><th>ECN</th><th>λ</th><th>FID</th><th>TCD</th><th>ECD</th></tr>';
+   AN.forEach(function(a){function cell(dn){var v=resp(a,dn,S.f,S.ng,S.car),sn=Math.abs(v)/DET[dn].noise;return '<span style="color:'+(sn>=3?'var(--ink)':'var(--muted)')+'">'+sig(v,2)+' '+DET[dn].unit+(sn<3?' ✗':'')+'</span>';}
+     h+='<tr><td>'+a.f+'</td><td>'+a.ecn+'</td><td>'+a.lam+'</td><td>'+cell('FID')+'</td><td>'+cell('TCD')+'</td><td>'+cell('ECD')+'</td></tr>';});
+   $('nmd').innerHTML=h+'</table></div><p>Peak heights for '+sig(S.ng,2)+' ng of each compound with '+CARR[S.car].n+' carrier at '+Math.round(F0*S.f)+' mL/min. ✗ = below S/N 3 (not detected). λ: thermal conductivity in mW/m·K. Noise: FID 0.01 pA, TCD 0.01 mV, ECD 5 Hz.</p><p>FID: I = 0.015 C per g of carbon × carbon mass flow, scaled by the effective carbon number. TCD: signal ∝ peak concentration × (λ<sub>carrier</sub> − λ<sub>analyte</sub>). ECD: signal ∝ concentration × capture coefficient, saturating at high amounts.</p>';}}];
+
+boot();
+})();
+</script>
+</body>
+</html>
