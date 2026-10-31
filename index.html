@@ -308,7 +308,7 @@ function drawChrom(){if(!$('v-chrom').classList.contains('on'))return;var svg=$(
   if(miss.length)svg.appendChild(el('text',{x:PL+2,y:PT-4,'font-size':11,fill:'var(--muted)','class':'halo'},'Not detected (S/N < 3): '+miss.join(', ')));
   if(miss.length===P.length&&P.length)svg.appendChild(el('text',{x:W/2,y:PT+40,'text-anchor':'middle','font-size':12.5,'font-weight':'bold',fill:'var(--warn)','class':'halo'},S.det==='TCD'?'Nothing above the noise: a TCD needs far more sample. Try 1,000 ng.':'Nothing above the noise: try a larger amount.'));
   svg.appendChild(el('text',{x:W-PR,y:16,'text-anchor':'end','font-size':11,fill:'var(--muted)'},S.det+' signal ('+DET[S.det].unit+'), full scale '+units(mx)));}
-function drawFlow(){if(!$('v-flow').classList.contains('on'))return;var svg=$('flsv'),wh=svgSize(svg),W=wh[0],H=wh[1],side=W>=520,pw=side?(W-30)/2:W-20,ph=side?H-60:(H-80)/2,a=AN[4],T0=a.t,S0=T0*0.06;
+function drawFlow(){if(!$('v-flow').classList.contains('on'))return;var svg=$('flsv'),wh=svgSize(svg),W=wh[0],H=wh[1],side=W>=520,pw=side?(W-30)/2:W-20,ph=side?H-60:(H-110)/2,a=AN[4],T0=a.t,S0=T0*0.06;
   [['FID (mass-flow sensitive)',function(f){return f;},'var(--c0)'],['TCD (concentration sensitive)',function(f){return 1;},'var(--c3)']].forEach(function(q,k){var ox=side?10+k*(pw+10):10,oy=side?30:30+k*(ph+40);
     function X(t){return ox+t/(T0*2.4)*pw;}function Y(v){return oy+ph-v/4.4*ph;}
     svg.appendChild(el('text',{x:ox,y:oy-10,'font-size':12,'font-weight':'bold',fill:q[2]},q[0]));svg.appendChild(el('line',{x1:ox,y1:oy+ph,x2:ox+pw,y2:oy+ph,'class':'ax'}));
