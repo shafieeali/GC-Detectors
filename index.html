@@ -187,7 +187,7 @@ function buildPanel(){
   else groups.filter(function(g){return g.id===pgroup;})[0].render(box);
   var rb=document.createElement('button');rb.type='button';rb.className='btn';rb.style.marginTop='12px';rb.textContent='Reset all to defaults';
   rb.addEventListener('click',function(){APP.reset();buildPanel();update(true);});box.appendChild(rb);
-  if(APP.S)refreshEq();if(APP.tabVals)APP.tabVals();
+  if(APP.S){APP.compute();refreshEq();}if(APP.tabVals)APP.tabVals();
 }
 function tabVal(id,txt){var a=$('pv-'+id);if(a)a.textContent=txt;var b=$('gh-'+id);if(b)b.textContent=txt;}
 function setFold(c){var r=document.querySelector('.right');r.classList.toggle('collapsed',c);var f=$('fold');f.textContent=c?'▴':'▾';f.setAttribute('aria-expanded',c?'false':'true');f.setAttribute('aria-label',c?'Show the controls':'Hide the controls to enlarge the view');}
@@ -261,7 +261,7 @@ function sig0(a){return (0.012*a.t+0.012)*60;}/* seconds at F0 */
 function resp(a,det,f,ng,car){var sg=sig0(a)/f,Fs=F0*f/60,cpk=ng*1e-6/(sg*Fs*2.5066);/* mg/mL at peak */
   if(det==='FID'){var mc=ng*a.wc*(a.ecn/Math.max(1,a.wc>0?a.ecn/(a.ecn||1):1));var mC=ng*1e-3*(a.ecn*12.011/a.M);/* µg of carbon equivalents */return mC/(sg*2.5066)*15000;}
   if(det==='TCD'){var cl=CARR[car].lam;return 1e4*cpk*(cl-a.lam)/(179-18)*(1);}
-  var raw=2.5e5*1e3*cpk*a.ecd,s2=DET.ECD.sat;return s2*(1-Math.exp(-raw/s2));}
+  var raw=1.25e12*cpk*a.ecd,s2=DET.ECD.sat;return s2*(1-Math.exp(-raw/s2));}
 function compute(){P=AN.filter(function(a){return S.on[a.id];}).map(function(a){var h=resp(a,S.det,S.f,S.ng,S.car),sg=sig0(a)/S.f/60;return {a:a,tR:a.t/S.f,s:sg,h:h,sn:Math.abs(h)/DET[S.det].noise};});}
 function units(v){var d=DET[S.det];return sig(v,3)+' '+d.unit;}
 APP.live=function(){var d=DET[S.det],seen=P.filter(function(p){return p.sn>=3;}),best=P.slice().sort(function(a,b){return b.sn-a.sn;})[0];
@@ -290,7 +290,7 @@ APP.groups=function(){var d=DET[S.det];return [
      eq:function(){return 't<sub>R</sub> ∝ 1/'+R_('F')+', width ∝ 1/'+R_('F')+'<br>'+N_('mass-flow detector (FID): height ∝ F, area constant · concentration detector (TCD, ECD): height constant, area ∝ 1/F');}});
    ctlNote(b,'Only the TCD cares which carrier gas you use (thermal conductivities in mW/m·K). Flow changes every detector, in different ways; see the Flow effect view.');}},
  {id:'smp',tab:'Sample',title:'Sample',render:function(b){
-   ctlSlider(b,{id:'ng',label:'Amount of each compound injected',min:0.001,max:1000,log:true,get:function(){return S.ng;},set:function(v){S.ng=v;},fmt:function(v){return sig(v,2)+' ng';},
+   ctlSlider(b,{id:'ng',label:'Amount of each compound injected',min:0.0001,max:1000,log:true,get:function(){return S.ng;},set:function(v){S.ng=v;},fmt:function(v){return v<0.01?sig(v*1000,2)+' pg':sig(v,2)+' ng';},
      eq:function(){var h=P.filter(function(p){return p.a.id==='hex';})[0];return 'S/N = peak height / noise; LOD ≈ 3·noise/sensitivity<br>'+N_(h?'hexane: '+units(h.h)+' / '+units(DET[S.det].noise)+' → S/N = '+sig(h.sn,2):'');}});
    AN.forEach(function(a){var l=document.createElement('label');l.className='chk';l.innerHTML='<input type="checkbox"'+(S.on[a.id]?' checked':'')+'><span style="display:inline-flex;align-items:center;gap:8px">'+molInline(sdef(a.id),false,9,'var(--ink)')+a.f+'</span>';
      l.querySelector('input').addEventListener('change',function(){S.on[a.id]=this.checked;update(true);});b.appendChild(l);});
@@ -303,42 +303,54 @@ function drawChrom(){if(!$('v-chrom').classList.contains('on'))return;var svg=$(
   svg.appendChild(el('line',{x1:PL,y1:y0,x2:W-PR,y2:y0,'class':'ax'}));svg.appendChild(el('text',{x:(PL+W-PR)/2,y:H-3,'text-anchor':'middle','class':'axt'},'Time (min)'));
   var n=Math.round(W*2),d='',nz=DET[S.det].noise;for(var i=0;i<=n;i++){var tt=tmax*i/n,v=0;P.forEach(function(p){var z=(tt-p.tR)/p.s;if(z>-8&&z<8)v+=p.h*Math.exp(-0.5*z*z);});v+=gauss()*nz;d+=(d?'L':'M')+X(tt).toFixed(1)+' '+Y(v).toFixed(1);}
   svg.appendChild(el('path',{d:d,fill:'none',stroke:'var(--navy)','stroke-width':1.6}));
-  var lastx=-99,miss=[];P.forEach(function(p,i){var x=X(p.tR),det=p.sn>=3,lab=p.a.f.split(' ')[0];if(!det){miss.push(lab);return;}if(x-lastx<30)return;lastx=x;
-    svg.appendChild(el('text',{x:x,y:p.h<0?Y(p.h)+14:Y(p.h)-6,'text-anchor':'middle','font-size':10.5,'font-weight':'bold',fill:'var(--c'+(AN.indexOf(p.a)%8)+')','class':'halo'},lab));});
-  if(miss.length)svg.appendChild(el('text',{x:PL+2,y:PT-4,'font-size':11,fill:'var(--muted)','class':'halo'},'Not detected (S/N < 3): '+miss.join(', ')));
-  if(miss.length===P.length&&P.length)svg.appendChild(el('text',{x:W/2,y:PT+40,'text-anchor':'middle','font-size':12.5,'font-weight':'bold',fill:'var(--warn)','class':'halo'},S.det==='TCD'?'Nothing above the noise: a TCD needs far more sample. Try 1,000 ng.':'Nothing above the noise: try a larger amount.'));
-  svg.appendChild(el('text',{x:W-PR,y:16,'text-anchor':'end','font-size':11,fill:'var(--muted)'},S.det+' signal ('+DET[S.det].unit+'), full scale '+units(mx)));}
-function drawFlow(){if(!$('v-flow').classList.contains('on'))return;var svg=$('flsv'),wh=svgSize(svg),W=wh[0],H=wh[1],side=W>=520,pw=side?(W-30)/2:W-20,ph=side?H-60:(H-110)/2,a=AN[4],T0=a.t,S0=T0*0.06;
+  var lastx=-99;P.forEach(function(p,i){var x=X(p.tR),det=p.sn>=3,y=det?Y(p.h):y0;var lab=p.a.f.split(' ')[0];if(x-lastx<30)return;lastx=x;
+    svg.appendChild(el('text',{x:x,y:p.h<0&&det?Y(p.h)+14:Math.min(y,y0)-6,'text-anchor':'middle','font-size':10.5,'font-weight':det?'bold':'normal',fill:det?'var(--c'+(i%8)+')':'var(--muted)','class':'halo'},lab+(det?'':' (not seen)')));});
+  svg.appendChild(el('text',{x:W-PR,y:16,'text-anchor':'end','font-size':11,fill:'var(--muted)'},S.det+' signal ('+DET[S.det].unit+'), full scale '+units(mx)));
+  svg.appendChild(el('text',{x:W-PR,y:H-PB-6,'text-anchor':'end','font-size':10,fill:'var(--muted)','class':'halo'},'Illustrative test mixture: retention times are not from one real column'));}
+function drawFlow(){if(!$('v-flow').classList.contains('on'))return;var svg=$('flsv'),wh=svgSize(svg),W=wh[0],H=wh[1],side=W>=520,pw=side?(W-30)/2:W-20,ph=side?H-60:(H-80)/2,a=AN[4],T0=a.t,S0=sig0(a)/60;
   [['FID (mass-flow sensitive)',function(f){return f;},'var(--c0)'],['TCD (concentration sensitive)',function(f){return 1;},'var(--c3)']].forEach(function(q,k){var ox=side?10+k*(pw+10):10,oy=side?30:30+k*(ph+40);
-    function X(t){return ox+t/(T0*2.4)*pw;}function Y(v){return oy+ph-v/4.4*ph;}
+    function X(t){return ox+t/(T0*4.2)*pw;}function Y(v){return oy+ph-v/4.4*ph;}
     svg.appendChild(el('text',{x:ox,y:oy-10,'font-size':12,'font-weight':'bold',fill:q[2]},q[0]));svg.appendChild(el('line',{x1:ox,y1:oy+ph,x2:ox+pw,y2:oy+ph,'class':'ax'}));
-    function pk(f,h){var dd='';for(var i=0;i<=300;i++){var t=T0*2.4*i/300,y=h*Math.exp(-0.5*Math.pow((t-T0/f)/(S0/f),2));dd+=(dd?'L':'M')+X(t).toFixed(1)+' '+Y(y).toFixed(1);}return dd;}
+    function pk(f,h){var dd='';for(var i=0;i<=300;i++){var t=T0*4.2*i/300,y=h*Math.exp(-0.5*Math.pow((t-T0/f)/(S0/f),2));dd+=(dd?'L':'M')+X(t).toFixed(1)+' '+Y(y).toFixed(1);}return dd;}
     svg.appendChild(el('path',{d:pk(1,1),fill:'none',stroke:'var(--muted)','stroke-dasharray':'5 4','stroke-width':1.4}));var h=q[1](S.f);svg.appendChild(el('path',{d:pk(S.f,h)+'Z',fill:q[2],'fill-opacity':0.15,stroke:q[2],'stroke-width':2.2}));
     svg.appendChild(el('text',{x:ox+pw,y:oy+4,'text-anchor':'end','font-size':11.5,'font-weight':'bold',fill:q[2]},'height '+h.toFixed(2)+'×, area '+(k?1/S.f:1).toFixed(2)+'×'));});
   svg.appendChild(el('text',{x:10,y:H-8,'font-size':11,fill:'var(--muted)'},'Hexane at '+S.f.toFixed(2)+'F (shaded) vs at F (dashed). Same amount injected.'));}
-/* inside the detector: animation of the stream arriving at the detector */
+/* inside the detector: a clean schematic of each detector, fed by the mixture as it elutes */
 var DA=null,dcx=null,DW=600,DH=300;
 function daSize(){var cv=$('dav');dcx=cv.getContext('2d');var r=cv.getBoundingClientRect();if(!r.width)return false;var d=Math.min(2,window.devicePixelRatio||1);DW=r.width;DH=r.height;cv.width=DW*d;cv.height=DH*d;dcx.setTransform(d,0,0,d,0,0);return true;}
-function daInit(){if(!daSize())return;DA={t:0,m:[],e:[],trace:[],sig:0,heat:0};}
-function daStep(dt){if(!DA)return;var tmax=8.5,sp=tmax/12;DA.t+=dt*sp;if(DA.t>tmax){DA.t=0;DA.trace=[];}
-  P.forEach(function(p){var c=Math.exp(-0.5*Math.pow((DA.t-p.a.t)/(sig0(p.a)/60*2.2),2));if(Math.random()<c*dt*40)DA.m.push({a:p.a,x:30,y:DH*0.5+gauss()*12,vx:90+Math.random()*30,p:p,done:false});});
-  var sig2=0;DA.m.forEach(function(m){m.x+=m.vx*dt;m.y+=gauss()*1.5;});
-  var zone=[DW*0.42,DW*0.58];
-  DA.m.forEach(function(m){if(!m.done&&m.x>zone[0]){m.done=true;if(S.det==='FID'&&m.a.ecn>0.3){m.ion=true;}if(S.det==='ECD'&&m.a.ecd>0.01)m.cap=true;}});
-  P.forEach(function(p){var c=Math.exp(-0.5*Math.pow((DA.t-p.a.t)/(sig0(p.a)/60*2.2),2));sig2+=p.h*c;});DA.sig=sig2;DA.trace.push([DA.t,sig2]);
-  DA.m=DA.m.filter(function(m){return m.x<DW+10;});if(S.det==='ECD'){if(Math.random()<dt*30)DA.e.push({x:DW*0.5+gauss()*20,y:DH*0.32,vy:60});DA.e.forEach(function(e){e.y+=e.vy*dt;});DA.e=DA.e.filter(function(e){return e.y<DH*0.68;});}}
-function daDraw(){if(!DA||!dcx)return;var W=DW,H=DH,c=dcx,cy=H*0.5,zx0=W*0.42,zx1=W*0.58;c.clearRect(0,0,W,H);
-  c.fillStyle=PAL.panel;c.fillRect(20,cy-34,W-40,68);c.fillStyle=PAL.muted;c.font='11px Arial';c.fillText('from the column →',24,cy-40);
-  if(S.det==='FID'){var g=c.createRadialGradient((zx0+zx1)/2,cy,4,(zx0+zx1)/2,cy,50);g.addColorStop(0,'rgba(255,170,40,.85)');g.addColorStop(1,'rgba(255,120,0,0)');c.fillStyle=g;c.beginPath();c.arc((zx0+zx1)/2,cy,50,0,7);c.fill();c.fillStyle=PAL.ink;c.fillText('H₂/air flame; collector electrode above',zx0-30,cy-48);c.fillStyle=PAL.muted;c.fillRect(zx0,cy-60,zx1-zx0,4);}
-  if(S.det==='TCD'){var heat=clamp(0.3+DA.sig/Math.max(1e-9,Math.max.apply(null,P.map(function(p){return Math.abs(p.h);}))),0,1.3);c.strokeStyle='rgba(220,'+Math.round(140-heat*80)+',40,1)';c.lineWidth=3;c.beginPath();for(var i=0;i<=10;i++)c.lineTo(zx0+i*(zx1-zx0)/10,cy+(i%2?8:-8));c.stroke();c.fillStyle=PAL.ink;c.fillText('heated filament (glows hotter when heat is carried away less)',zx0-60,cy-42);}
-  if(S.det==='ECD'){c.fillStyle=PAL.c5;c.fillRect(zx0,cy-34,zx1-zx0,5);c.fillStyle=PAL.ink;c.fillText('⁶³Ni β source → electrons → anode (steady current)',zx0-60,cy-42);c.fillStyle=PAL.c7;DA.e.forEach(function(e){c.fillRect(e.x-1,e.y-1,2.5,2.5);});}
-  DA.m.forEach(function(m){var i=AN.indexOf(m.a),col=PAL['c'+(i%8)];c.beginPath();c.arc(m.x,m.y,m.a.M>60?5:3.6,0,7);
-    if(S.det==='FID'&&m.done){if(m.ion){c.fillStyle=PAL.eqr;c.font='bold 9px Arial';c.fillText('+',m.x-2,m.y-6);}c.fillStyle=m.ion?col:PAL.support;c.fill();}
-    else if(S.det==='ECD'&&m.cap&&m.done){c.fillStyle=col;c.fill();c.fillStyle=PAL.eqr;c.font='bold 10px Arial';c.fillText('−',m.x-3,m.y-6);}else{c.fillStyle=col;c.fill();}});
-  var y0=H-18,hgt=H*0.22,tmax=8.5,mx=Math.max.apply(null,P.map(function(p){return Math.abs(p.h);}).concat([1e-9])),neg=P.some(function(p){return p.h<0;});c.strokeStyle=PAL.rule;c.beginPath();c.moveTo(20,neg?y0-hgt/2:y0);c.lineTo(W-20,neg?y0-hgt/2:y0);c.stroke();
-  c.strokeStyle=PAL.navy;c.lineWidth=1.8;c.beginPath();DA.trace.forEach(function(q,i){var x=20+q[0]/tmax*(W-40),y=(neg?y0-hgt/2:y0)-q[1]/mx*(neg?hgt/2:hgt);if(i)c.lineTo(x,y);else c.moveTo(x,y);});c.stroke();
-  c.fillStyle=PAL.muted;c.font='11px Arial';c.fillText('detector output',22,y0-hgt-4);
-  var cur=P.filter(function(p){return Math.abs(DA.t-p.a.t)<0.25;})[0];c.fillStyle=PAL.ink;c.font='bold 12px Arial';c.fillText('t = '+DA.t.toFixed(1)+' min'+(cur?'  ·  '+cur.a.f+(cur.sn>=3?'':' (no response)'):''),24,18);}
+function daInit(){if(!daSize())return;DA={t:0,m:[],e:[],ions:[],trace:[],sig:0,det:S.det};}
+function geo(){var top=36,bot=DH-Math.max(70,DH*0.28),cy=(top+bot)/2,cx=DW/2,w=Math.min(DW*0.7,420),h=Math.min(bot-top,170);return {top:top,bot:bot,cy:cy,cx:cx,x0:cx-w/2,x1:cx+w/2,y0:cy-h/2,y1:cy+h/2};}
+function respTo(a){if(S.det==='FID')return a.ecn>0.3;if(S.det==='ECD')return a.ecd>0.005;return Math.abs(CARR[S.car].lam-a.lam)>3;}
+function daStep(dt){if(!DA)return;if(DA.det!==S.det){daInit();return;}var g=geo(),tmax=8.5,sp=tmax/14;DA.t+=dt*sp;if(DA.t>tmax){DA.t=0;DA.trace=[];}
+  P.forEach(function(p){var c=Math.exp(-0.5*Math.pow((DA.t-p.a.t)/(sig0(p.a)/60*2.4),2));if(Math.random()<c*dt*9&&DA.m.length<40)DA.m.push({a:p.a,x:g.x0-30,y:g.cy+gauss()*g.h*0.12||g.cy,vx:70,hit:false,ok:respTo(p.a)});});
+  DA.m.forEach(function(m){m.x+=m.vx*dt;m.y+=gauss()*0.8;
+    if(!m.hit&&m.x>g.cx-10){m.hit=true;if(m.ok&&S.det==='FID'){DA.ions.push({x:m.x,y:m.y,vy:-60,q:'+'});DA.ions.push({x:m.x,y:m.y,vy:60,q:'e⁻'});}}});
+  DA.m=DA.m.filter(function(m){return m.x<g.x1+40&&!(S.det==='FID'&&m.hit&&m.ok&&m.x>g.cx+6);});
+  DA.ions.forEach(function(i){i.y+=i.vy*dt;});DA.ions=DA.ions.filter(function(i){return i.y>g.y0-4&&i.y<g.y1+4;});
+  if(S.det==='ECD'){if(Math.random()<dt*25)DA.e.push({x:g.x0+8,y:g.y0+12+Math.random()*(g.y1-g.y0-24),vx:110});DA.e.forEach(function(e){e.x+=e.vx*dt;});
+    DA.e=DA.e.filter(function(e){var cap=DA.m.some(function(m){return m.ok&&Math.abs(m.x-e.x)<10&&Math.abs(m.y-e.y)<10;});if(cap){var mm=DA.m.filter(function(m){return m.ok&&Math.abs(m.x-e.x)<10;})[0];if(mm)mm.cap=true;}return !cap&&e.x<g.x1-8;});}
+  var s2=0;P.forEach(function(p){s2+=p.h*Math.exp(-0.5*Math.pow((DA.t-p.a.t)/(sig0(p.a)/60*2.4),2));});DA.sig=s2;DA.trace.push([DA.t,s2]);}
+function daDraw(){if(!DA||!dcx)return;var c=dcx,W=DW,H=DH,g=geo(),i;c.clearRect(0,0,W,H);
+  var mx=Math.max.apply(null,P.map(function(p){return Math.abs(p.h);}).concat([1e-12])),lvl=clamp(Math.abs(DA.sig)/mx,0,1);
+  c.fillStyle=PAL.panel;c.strokeStyle=PAL.muted;c.lineWidth=1.5;c.beginPath();c.rect(g.x0,g.y0,g.x1-g.x0,g.y1-g.y0);c.fill();c.stroke();
+  c.fillStyle=PAL.muted;c.font='11px Arial';c.fillText('from column →',Math.max(4,g.x0-34),g.y0-6);
+  if(S.det==='FID'){c.fillStyle=PAL.muted;c.fillRect(g.cx-40,g.y0+6,80,6);c.fillRect(g.cx-40,g.y1-12,80,6);
+    var fl=c.createRadialGradient(g.cx,g.cy,2,g.cx,g.cy,46);fl.addColorStop(0,'rgba(255,190,60,.95)');fl.addColorStop(0.6,'rgba(255,130,20,.35)');fl.addColorStop(1,'rgba(255,120,0,0)');c.fillStyle=fl;c.beginPath();c.arc(g.cx,g.cy,46,0,7);c.fill();
+    c.fillStyle=PAL.ink;c.font='11px Arial';c.textAlign='center';c.fillText('collector (−)',g.cx,g.y0+24);c.fillText('jet and H₂/air flame',g.cx,g.y1-18);c.textAlign='left';
+    DA.ions.forEach(function(q){c.fillStyle=q.q==='+'?PAL.eqr:PAL.c7;c.font='bold 11px Arial';c.fillText(q.q,q.x-3,q.y+4);});}
+  if(S.det==='TCD'){var hot=0.25+0.75*lvl;c.strokeStyle='rgb('+Math.round(180+75*hot)+','+Math.round(150-110*hot)+',40)';c.lineWidth=3;c.beginPath();for(i=0;i<=12;i++)c.lineTo(g.cx-60+i*10,g.cy+(i%2?10:-10));c.stroke();
+    c.fillStyle=PAL.ink;c.font='11px Arial';c.textAlign='center';c.fillText('heated filament: '+(lvl>0.15?'heats up (analyte carries heat away poorly)':'cooled by the '+CARR[S.car].n+' carrier'),g.cx,g.y0+16);c.textAlign='left';}
+  if(S.det==='ECD'){c.fillStyle=PAL.c5;c.fillRect(g.x0,g.y0,7,g.y1-g.y0);c.fillStyle=PAL.muted;c.fillRect(g.x1-7,g.y0,7,g.y1-g.y0);
+    c.fillStyle=PAL.ink;c.font='11px Arial';c.fillText('⁶³Ni foil',g.x0+10,g.y0+14);c.textAlign='right';c.fillText('anode',g.x1-10,g.y0+14);c.textAlign='left';
+    c.fillStyle=PAL.c7;DA.e.forEach(function(e){c.fillRect(e.x-1.5,e.y-1.5,3,3);});}
+  DA.m.forEach(function(m){var k=AN.indexOf(m.a),col=PAL['c'+(k%8)],r=m.a.M>70?7:5;c.beginPath();c.arc(m.x,m.y,r,0,7);c.globalAlpha=(S.det==='FID'&&m.hit&&!m.ok)?0.35:1;c.fillStyle=col;c.fill();c.globalAlpha=1;
+    if(m.cap){c.fillStyle=PAL.eqr;c.font='bold 11px Arial';c.fillText('−',m.x+r,m.y-r);}});
+  var cur=P.filter(function(p){return Math.abs(DA.t-p.a.t)<0.3;})[0];c.fillStyle=PAL.ink;c.font='bold 12px Arial';
+  c.fillText('t = '+DA.t.toFixed(1)+' min'+(cur?'   '+cur.a.f+(respTo(cur.a)?(cur.sn>=3?' → signal':' → too little to see'):' → no response'):''),10,18);
+  if(S.det==='ECD'){c.fillStyle=PAL.muted;c.font='11px Arial';c.fillText('standing current '+Math.round(100-60*lvl)+'%',g.x1-120,g.y1+16);}
+  var y0=H-16,hgt=Math.max(36,H*0.2),tmax=8.5,neg=P.some(function(p){return p.h<0;}),base=neg?y0-hgt/2:y0;c.strokeStyle=PAL.rule;c.lineWidth=1;c.beginPath();c.moveTo(10,base);c.lineTo(W-10,base);c.stroke();
+  c.strokeStyle=PAL.navy;c.lineWidth=1.8;c.beginPath();DA.trace.forEach(function(q,j){var x=10+q[0]/tmax*(W-20),y=base-q[1]/mx*(neg?hgt/2:hgt);if(j)c.lineTo(x,y);else c.moveTo(x,y);});c.stroke();
+  c.fillStyle=PAL.muted;c.font='11px Arial';c.fillText('detector output',12,base-hgt-2);}
 APP.views=[{id:'chrom',label:'Chromatogram',draw:drawChrom},{id:'inside',label:'Inside the detector',enter:daInit,resize:daInit,step:daStep,draw:daDraw},{id:'flow',label:'Flow effect',draw:drawFlow},
  {id:'nums',label:'Numbers',draw:function(){if(!$('v-nums').classList.contains('on'))return;var h='<div class="wrapx"><table><tr><th>Compound</th><th>ECN</th><th>λ</th><th>FID</th><th>TCD</th><th>ECD</th></tr>';
    AN.forEach(function(a){function cell(dn){var v=resp(a,dn,S.f,S.ng,S.car),sn=Math.abs(v)/DET[dn].noise;return '<span style="color:'+(sn>=3?'var(--ink)':'var(--muted)')+'">'+sig(v,2)+' '+DET[dn].unit+(sn<3?' ✗':'')+'</span>';}
